@@ -1,0 +1,7 @@
+*.pyc
+.DS_Store
+backup
+chroma_boardgames/
+env/
+.env
+__pycache__
