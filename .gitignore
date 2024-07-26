@@ -1,7 +1,11 @@
 *.pyc
 .DS_Store
+.vscode/
+.vscode/launch.json
 backup
 chroma_boardgames/
 env/
 .env
 __pycache__
+.pytest_cache
+
