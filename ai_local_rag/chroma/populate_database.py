@@ -1,16 +1,16 @@
 import argparse
 import os
-from dotenv import load_dotenv
-
-
 import shutil
+
+from dotenv import load_dotenv
+from langchain.schema.document import Document
 # from langchain.document_loaders.pdf import PyPDFDirectoryLoader
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.schema.document import Document
-from get_embedding_function import get_embedding_function
 # from langchain.vectorstores.chroma import Chroma
 from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from ai_local_rag.utils.get_embedding_function import get_embedding_function
 
 # Load Config Settings
 load_dotenv()  # take environment variables from .env.

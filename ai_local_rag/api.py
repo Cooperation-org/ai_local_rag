@@ -1,11 +1,13 @@
 import logging
-from query_data import query_rag
-from fastapi import FastAPI, Request, HTTPException, status
+
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from models.rag_query_model import QueryInput, QueryOutput
-from utils.async_utils import async_retry
+
+from ai_local_rag.models.rag_query_model import QueryInput, QueryOutput
+from ai_local_rag.query_data import query_rag
+from ai_local_rag.utils.async_utils import async_retry
 
 
 class Message(BaseModel):
