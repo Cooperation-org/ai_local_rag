@@ -10,7 +10,7 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from ai_local_rag.utils.get_embedding_function import get_embedding_function
+from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_pdf
 
 # Load Config Settings
 load_dotenv()  # take environment variables from .env.
@@ -59,7 +59,7 @@ def _add_to_chroma(chunks: list[Document]):
     chroma_path = os.getenv("CHROMA_PATH")
     # Load the existing database.
     db = Chroma(
-        persist_directory=chroma_path, embedding_function=get_embedding_function()
+        persist_directory=chroma_path, embedding_function=get_embedding_function_for_pdf()
     )
 
     # Calculate Page IDs.

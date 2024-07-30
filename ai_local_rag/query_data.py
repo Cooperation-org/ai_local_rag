@@ -6,7 +6,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
 
-from ai_local_rag.utils.get_embedding_function import get_embedding_function
+from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_pdf
 
 # Load Config Settings
 load_dotenv()  # take environment variables from .env.
@@ -34,7 +34,7 @@ def main():
 
 def query_rag(query_text: str):
     # Prepare the DB.
-    embedding_function = get_embedding_function()
+    embedding_function = get_embedding_function_for_pdf()
     db = Chroma(persist_directory=CHROMA_PATH,
                 embedding_function=embedding_function)
 

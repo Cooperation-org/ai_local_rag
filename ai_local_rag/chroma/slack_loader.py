@@ -17,7 +17,7 @@ from langchain_community.chat_models import ChatOllama
 from langchain_community.document_loaders import SlackDirectoryLoader
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings.ollama import OllamaEmbeddings
-from ai_local_rag.utils.get_embedding_function import get_embedding_function, CustomOpenAIEmbeddings, CustomOllamaEmbeddings
+from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_slack, CustomOpenAIEmbeddings, CustomOllamaEmbeddings
 
 dotenv.load_dotenv()
 logging.basicConfig()
@@ -137,7 +137,7 @@ def _add_to_chroma_with_langchain(chunks: list[Document]):
     logger.info(f"_add_to_chroma - collection name:  {chroma_collection}")
     # Load the existing database.
     db = Chroma(collection_name=chroma_collection,
-                persist_directory=chroma_path, embedding_function=get_embedding_function()
+                persist_directory=chroma_path, embedding_function=get_embedding_function_for_slack()
                 )
 
     db.persist()
@@ -153,7 +153,7 @@ def _add_to_chroma(chunks_with_ids: list[Document]):
     logger.info(f"_add_to_chroma - collection name:  {chroma_collection}")
 
     chroma_client = chromadb.Client()
-    embedding_function = get_embedding_function()
+    embedding_function = get_embedding_function_for_slack()
     collection = chroma_client.get_or_create_collection(
         name=chroma_collection, embedding_function=embedding_function
     )
