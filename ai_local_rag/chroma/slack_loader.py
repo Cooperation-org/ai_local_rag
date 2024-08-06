@@ -17,12 +17,15 @@ from langchain_community.chat_models import ChatOllama
 from langchain_community.document_loaders import SlackDirectoryLoader
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings.ollama import OllamaEmbeddings
-from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_slack, CustomOpenAIEmbeddings, CustomOllamaEmbeddings
+from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_slack
 
 dotenv.load_dotenv()
 logging.basicConfig()
 logger = logging.getLogger("slack_loader")
 logger.setLevel(logging.DEBUG)
+
+chroma_path = os.getenv("CHROMA_DB_PATH_SLACK")
+chroma_collection = os.getenv("CHROMA_SLACK_COLLECTION")
 
 
 def slack_toolkit():
@@ -132,8 +135,7 @@ def _calculate_chunk_ids(chunks: list[Document]):
 
 
 def _add_to_chroma_with_langchain(chunks: list[Document]):
-    chroma_path = os.getenv("CHROMA_PATH_SLACK")
-    chroma_collection = os.getenv("CHROMA_SLACK_COLLECTION")
+
     logger.info(f"_add_to_chroma - collection name:  {chroma_collection}")
     # Load the existing database.
     db = Chroma(collection_name=chroma_collection,
@@ -144,8 +146,6 @@ def _add_to_chroma_with_langchain(chunks: list[Document]):
 
 
 def _add_to_chroma(chunks_with_ids: list[Document]):
-    chroma_path = os.getenv("CHROMA_PATH_SLACK")
-    chroma_collection = os.getenv("CHROMA_SLACK_COLLECTION")
 
     chroma_client = chromadb.PersistentClient(path=chroma_path)
     # settings=Settings(chroma_db_impl="duckdb+parquet"))
@@ -154,6 +154,7 @@ def _add_to_chroma(chunks_with_ids: list[Document]):
 
     chroma_client = chromadb.Client()
     embedding_function = get_embedding_function_for_slack()
+    # chroma_client.delete_collection(chroma_collection)
     collection = chroma_client.get_or_create_collection(
         name=chroma_collection, embedding_function=embedding_function
     )
@@ -166,6 +167,8 @@ def _add_to_chroma(chunks_with_ids: list[Document]):
     collection.add(ids=chunks_with_ids["chunk_ids"],
                    metadatas=chunks_with_ids["metadata"],
                    documents=chunks_with_ids["chunks"])
+
+    logger.debug(f"Total number of embeddings loaded: {collection.count()}")
 
     results = collection.query(
         # Chroma will embed this for you

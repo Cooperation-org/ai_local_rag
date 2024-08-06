@@ -5,12 +5,13 @@ from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
+from langchain_community.embeddings.ollama import OllamaEmbeddings
 
-from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_pdf
+from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_slack
 
 # Load Config Settings
 load_dotenv()  # take environment variables from .env.
-chroma_db_path_pdf = os.getenv("CHROMA_DB_PATH_PDF")
+chroma_db_path_pdf = os.getenv("CHROMA_DB_PATH_SLACK")
 
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
@@ -34,7 +35,8 @@ def main():
 
 def query_rag(query_text: str):
     # Prepare the DB.
-    embedding_function = get_embedding_function_for_pdf()
+    # embedding_function = get_embedding_function_for_slack()
+    embedding_function = OllamaEmbeddings(model="nomic-embed-text")
     db = Chroma(persist_directory=chroma_db_path_pdf,
                 embedding_function=embedding_function)
 

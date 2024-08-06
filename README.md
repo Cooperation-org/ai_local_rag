@@ -36,7 +36,7 @@ Create a `.env` file in the root directory and add the following environment var
 
 ```.env
 
-CHROMA_PATH=chroma_boardgames
+CHROMA_DB_PATH_PDF=chroma_boardgames
 DATA_PATH_BG=data_boardgames
 ```
 

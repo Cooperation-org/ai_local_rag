@@ -1,8 +1,16 @@
+import os
+
+import dotenv
+
 from langchain_community.embeddings.ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from chromadb.utils import embedding_functions
+from sentence_transformers import SentenceTransformer
+import nomic
+from nomic import embed
 # from langchain_community.embeddings.bedrock import BedrockEmbeddings
 # from langchain_community.embeddings import FastEmbedEmbeddings
+dotenv.load_dotenv()
 
 
 def get_embedding_function_for_slack():
@@ -11,11 +19,15 @@ def get_embedding_function_for_slack():
     # )
 
     # Make sure you run this first:  ollama pull nomic-embed-text
-    # embeddings = OllamaEmbeddings(model="nomic-embed-text")
+    # ollama_model = OllamaModel("nomic-embed-text")
+    # embeddings = CustomOllamaEmbedding("nomic-embed-text-v1")
+    embeddings = CustomSentenceTransformerEmbedding('paraphrase-MiniLM-L6-v2')
 
     # embeddings = embedding_functions.DefaultEmbeddingFunction()
-    embeddings = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2")
+
+    # embeddings = embedding_functions.SentenceTransformerEmbeddingFunction(
+    #    model_name="all-MiniLM-L6-v2")
+
     # embeddings = FastEmbedEmbeddings()
     return embeddings
 
@@ -52,19 +64,25 @@ class CustomOpenAIEmbeddings(OpenAIEmbeddings):
         return self._embed_documents(input)
 
 
-class CustomOllamaEmbeddings(OllamaEmbeddings):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def _embed_documents(self, texts):
-        embeddings = [
-            self.
-            self.client.create(
-                input=text, model="nomic-embed-text").data[0].embedding
-            for text in texts
-        ]
-        return embeddings
+class CustomOllamaEmbedding:
+    def __init__(self, model_name):
+        self.model_name = model_name
 
     def __call__(self, input):
-        return self._embed_documents(input)
+        nomic_api_key = os.getenv("NOMIC_API_KEY")
+        nomic.login(nomic_api_key)
+        if isinstance(input, str):
+            input = [input]
+        # Assuming nomic library provides a function to embed text
+        embeddings = embed.text(input, model=self.model_name)
+        return embeddings
+
+
+class CustomSentenceTransformerEmbedding:
+    def __init__(self, model_name):
+        self.model = SentenceTransformer(model_name)
+
+    def __call__(self, input):
+        if isinstance(input, str):
+            input = [input]
+        return self.model.encode(input)

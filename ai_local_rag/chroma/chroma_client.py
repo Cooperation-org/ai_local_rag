@@ -6,7 +6,7 @@ import os
 import dotenv
 from langchain.vectorstores import Chroma
 
-from ai_local_rag.utils.get_embedding_function import get_embedding_function
+# from ai_local_rag.utils.get_embedding_function import get_embedding_function
 
 
 dotenv.load_dotenv()
