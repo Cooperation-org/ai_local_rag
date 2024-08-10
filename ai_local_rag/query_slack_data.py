@@ -1,17 +1,29 @@
 import argparse
+import logging
 import os
-from dotenv import load_dotenv
-# from langchain.vectorstores.chroma import Chroma
-from langchain_community.vectorstores import Chroma
-from langchain.prompts import ChatPromptTemplate
-from langchain_community.llms.ollama import Ollama
-from langchain_community.embeddings.ollama import OllamaEmbeddings
 
-from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_slack
+import chromadb
+import numpy as np
+from dotenv import load_dotenv
+
+from ai_local_rag.utils.get_embedding_function import \
+    get_embedding_function_for_slack
 
 # Load Config Settings
 load_dotenv()  # take environment variables from .env.
-chroma_db_path_pdf = os.getenv("CHROMA_DB_PATH_SLACK")
+
+
+logging.basicConfig()
+logger = logging.getLogger("slack_loader")
+logger.setLevel(logging.DEBUG)
+
+chroma_path = os.getenv("CHROMA_DB_PATH_SLACK")
+chroma_collection = os.getenv("CHROMA_SLACK_COLLECTION")
+
+verbose_str = os.getenv("VERBOSE").lower()
+VERBOSE = False
+if verbose_str == "true":
+    VERBOSE = True
 
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
@@ -33,34 +45,84 @@ def main():
     query_rag(query_text)
 
 
+def _get_collection():
+    # Create or load a collection
+    collection_name = chroma_collection
+    collection = None
+    chroma_client = chromadb.PersistentClient(path=chroma_path)
+    try:
+        collection = chroma_client.get_collection(collection_name)
+
+        return collection
+    except Exception as e:
+        print(f"Error accessing collection: {e}")
+
+
 def query_rag(query_text: str):
-    # Prepare the DB.
-    # embedding_function = get_embedding_function_for_slack()
-    embedding_function = OllamaEmbeddings(model="nomic-embed-text")
-    db = Chroma(persist_directory=chroma_db_path_pdf,
-                embedding_function=embedding_function)
+    # Load the collection
+    collection = _get_collection()
 
-    # Search the DB.
-    results = db.similarity_search_with_score(query_text, k=5)
+    # QUERY WITH METADATA
+    embedding_function = get_embedding_function_for_slack()
+    query_embedding = embedding_function(query_text)
+    query_include = ["metadatas", "documents", "distances", "embeddings"]
 
-    context_text = "\n\n---\n\n".join(
-        [doc.page_content for doc, _score in results])
-    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt = prompt_template.format(context=context_text, question=query_text)
-    # print(prompt)
+    # Ensure query_embedding is in the expected format
+    if isinstance(query_embedding, np.ndarray):
+        query_embedding = query_embedding.tolist()
 
-    model = Ollama(model="mistral")
-    response_text = model.invoke(prompt)
+    # Query the collection and retrieve results with the specified includes
+    try:
+        results = collection.query(
+            query_embeddings=query_embedding,
+            n_results=5,  # Number of results to retrieve
+            include=query_include
+        )
+        result_len = len(results.get('ids', []))
+        logger.info(f"Query returned {result_len} item(s)")
 
-    sources = [doc.metadata.get("id", None) for doc, _score in results]
-    formatted_response = f"Response: {response_text}\nSources: {sources}"
-    print(formatted_response)
+        if VERBOSE:
 
-    # Format the response
-    response_message = {"query": query_text,
-                        "response": response_text, "sources": sources}
-    # print(f"qyery_data:query_rag: Response Message:  {response_message}")
-    return response_message
+            # Process and print results
+            ids = results.get('ids', [])
+            embeddings = results.get('embeddings', [])
+            distances = results.get('distances', [])
+            metadatas = results.get('metadatas', [])
+            documents = results.get('documents', [])
+
+            # Process and print results
+            # for i in range(len(ids)):
+            for i, result_id in enumerate(ids):
+                logger.debug(f"Result {i + 1}:")
+                logger.debug(f"ID: {result_id}")
+
+                if distances:
+                    logger.debug(
+                        f"Distance (Similarity Score) {i + 1}: {distances[i]}\n")
+                else:
+                    logger.debug("Distance not available.")
+
+                if documents:
+                    logger.debug(f"Documents {i + 1}: {documents[i]}\n")
+                else:
+                    logger.debug("Distance not available.")
+
+                if metadatas:
+                    logger.debug(f"Metadata {i + 1}: {metadatas[i]}\n")
+                else:
+                    logger.debug("Metadata not available.")
+
+                if embeddings:
+                    # logger.debug(f"Embedding: {embeddings[i]}")
+                    logger.debug(f"Retreived an embedding {i + 1}\n")
+                else:
+                    print("Embedding not available.")
+
+            logger.debug("-" * 40)
+
+        return results
+    except Exception as e:
+        print(f"Error querying the collection: {e}")
 
 
 if __name__ == "__main__":

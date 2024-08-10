@@ -2,6 +2,8 @@ import os
 
 import dotenv
 
+import numpy as np
+
 from langchain_community.embeddings.ollama import OllamaEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from chromadb.utils import embedding_functions
@@ -85,4 +87,9 @@ class CustomSentenceTransformerEmbedding:
     def __call__(self, input):
         if isinstance(input, str):
             input = [input]
-        return self.model.encode(input)
+        # Generate embeddings
+        embeddings = self.model.encode(input)
+        # Ensure embeddings are in list format if using NumPy arrays
+        if isinstance(embeddings, np.ndarray):
+            embeddings = embeddings.tolist()
+        return embeddings

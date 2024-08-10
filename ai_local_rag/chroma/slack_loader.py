@@ -2,12 +2,12 @@
 Loader for slack
 """
 import os
-
-import dotenv
 import logging
+import dotenv
+
+import numpy as np
 from dotenv import load_dotenv
 import chromadb
-from chromadb.config import Settings
 from langchain import hub
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain.schema.document import Document
@@ -16,7 +16,6 @@ from langchain_community.agent_toolkits import SlackToolkit
 from langchain_community.chat_models import ChatOllama
 from langchain_community.document_loaders import SlackDirectoryLoader
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings.ollama import OllamaEmbeddings
 from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_slack
 
 dotenv.load_dotenv()
@@ -91,6 +90,8 @@ def _calculate_chunk_ids(chunks: list[Document]):
     # This will create IDs like "c-linkedtrust:U069UCY6WPL:1721902091.115329:2"
     # Channel : UserId: Timestamp: Chunk Index
 
+    # Document format is:[Document(metadata={'soource': 'xxxx'})]
+
     last_page_id = None
     current_chunk_index = 0
 
@@ -126,9 +127,9 @@ def _calculate_chunk_ids(chunks: list[Document]):
         # Add it to the list of ids
         chunk_id_list.append(chunk_id)
 
-    response["chunks"] = page_content
-    response["chunk_ids"] = chunk_id_list
-    response["metadata"] = metadata_list
+    response["texts"] = page_content
+    response["ids"] = chunk_id_list
+    response["metadatas"] = metadata_list
 
     # return chunks
     return response
@@ -152,32 +153,119 @@ def _add_to_chroma(chunks_with_ids: list[Document]):
 
     logger.info(f"_add_to_chroma - collection name:  {chroma_collection}")
 
-    chroma_client = chromadb.Client()
+    # Create or load a collection
+    collection_name = chroma_collection
+    collection = None
+    try:
+        collection = chroma_client.get_or_create_collection(collection_name)
+    except Exception as e:
+        print(f"Error accessing collection: {e}")
+
+    texts = chunks_with_ids['texts']
+    metadatas = chunks_with_ids['metadatas']
+    ids = chunks_with_ids['ids']
+
+    # Get the embeddings function
     embedding_function = get_embedding_function_for_slack()
-    # chroma_client.delete_collection(chroma_collection)
-    collection = chroma_client.get_or_create_collection(
-        name=chroma_collection, embedding_function=embedding_function
-    )
 
-    # Calculate Page IDs.
-    # chunks_with_ids = _calculate_chunk_ids(chunks)
+    # Generate the embeddings
+    embeddings = embedding_function(texts)
+    # print("Embeddings:  ", embeddings)
 
-    # collection = chroma_client.create_collection(name=chroma_collection)
+    # Debugging: Print lengths of all inputs
+    logger.debug(f"Texts length: {len(texts)}\n")
+    logger.debug(f"Embeddings length: {len(embeddings)}\n")
+    logger.debug(f"Metadata length: {len(metadatas)}\n")
+    logger.debug(f"IDs length: {len(ids)}\n")
 
-    collection.add(ids=chunks_with_ids["chunk_ids"],
-                   metadatas=chunks_with_ids["metadata"],
-                   documents=chunks_with_ids["chunks"])
+    # Ensure all lists have the same length
+    assert len(texts) == len(embeddings) == len(metadatas) == len(
+        ids), "Lengths of input lists do not match."
 
-    logger.debug(f"Total number of embeddings loaded: {collection.count()}")
+    # Ensure we have an embedding for each ID
+    for i in range(len(ids)):
+        print(f"ID: {ids[i]}")
+        print(f"Embedding: {embeddings[i]}")
 
-    results = collection.query(
-        # Chroma will embed this for you
-        query_texts=["This is a query document about c-linked-trust"],
-        n_results=2  # how many results to return
-    )
+    # Add text and embeddings to the collection
+    try:
+        collection.add(documents=texts, embeddings=embeddings,
+                       metadatas=metadatas, ids=ids)
 
-    logger.info("QUERY RESULTS")
-    logger.info(results)
+    except Exception as e:
+        print(f"Error adding to collection: {e}")
+
+    logger.info("DONE LOADING and QUERING")
+
+
+def _query():
+    collection = []
+
+    # Create or load a collection
+    collection_name = chroma_collection
+    collection = None
+    chroma_client = chromadb.PersistentClient(path=chroma_path)
+    try:
+        collection = chroma_client.get_collection(collection_name)
+    except Exception as e:
+        print(f"Error accessing collection: {e}")
+
+     # QUERY WITH METADATA
+    query_text = 'Great i have tasks on the front and in back so i will contact with both'
+    embedding_function = get_embedding_function_for_slack()
+    query_embedding = embedding_function(query_text)
+    query_include = ["metadatas", "distances", "embeddings"]
+
+    # Ensure query_embedding is in the expected format
+    if isinstance(query_embedding, np.ndarray):
+        query_embedding = query_embedding.tolist()
+
+    # Query the collection
+    try:
+        result = collection.query(
+            query_embedding, n_results=1, include=query_include)
+        print("Query Result:  ", result)
+    except Exception as e:
+        logger.info(f"Error querying the collection: {e}")
+
+    # Example: Query the collection and retrieve results with metadata
+    try:
+        results = collection.query(
+            query_embeddings=query_embedding,
+            n_results=5,  # Number of results to retrieve
+            include=query_include
+        )
+
+        # Process and print results
+        ids = results.get('ids', [])
+        embeddings = results.get('embeddings', [])
+        distances = results.get('distances', [])
+        metadatas = results.get('metadatas', [])
+
+        # Process and print results
+        # for i in range(len(ids)):
+        for i, result_id in enumerate(ids):
+            print(f"Result {i + 1}:")
+            print(f"ID: {result_id}")
+
+            if distances:
+                print(f"Distance: {distances[i]}")
+            else:
+                print("Distance not available.")
+
+            if metadatas:
+                print(f"Metadata: {metadatas[i]}")
+            else:
+                print("Metadata not available.")
+
+            if embeddings:
+                print(f"Embedding: {embeddings[i]}")
+            else:
+                print("Embedding not available.")
+
+        print("-" * 40)
+    except Exception as e:
+        print(f"Error querying the collection: {e}")
 
 
 def main():
@@ -190,6 +278,7 @@ def main():
     chunks = _calculate_chunk_ids(chunks)
     _print_chunks(chunks)
     _add_to_chroma(chunks)
+    _query()
     logger.info("FINISHED")
 
 
