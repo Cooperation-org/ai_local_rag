@@ -29,6 +29,7 @@ Next open your terminal and execute the following command to pull the latest Mis
 
 ```
 ollama pull llama3
+ollama pull nomic-embed-text
 ```
 
 #### Configuration
