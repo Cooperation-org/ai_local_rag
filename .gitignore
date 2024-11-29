@@ -3,7 +3,7 @@
 .vscode/
 .vscode/launch.json
 backup
-chroma_boardgames/
+vector_store/
 env/
 .env
 __pycache__

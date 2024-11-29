@@ -11,8 +11,7 @@ Clone this repository and create a clean python v3.10 virtual environment and ac
 The following is a high-level list of components used to run this local RAG:
 
 - langchain
-- streamlit
-- streamlit-chat
+- ollama
 - pypdf
 - chromadb
 - fastembed
@@ -38,7 +37,7 @@ Create a `.env` file in the root directory and add the following environment var
 
 ```.env
 
-CHROMA_PATH=chroma_boardgames
+CHROMA_DB_PATH_PDF=chroma_boardgames
 DATA_PATH_BG=data_boardgames
 ```
 
@@ -54,7 +53,7 @@ If you need to clear the database for any reason, run:
 
 The above command will remove the chroma database. If you need to recreate it, simply rerun `populate_database.py`
 
-## Running the RAG
+## Running the RAG from the commandline:
 
 The instruction manuals for both Monopoly and Ticket To Ride have been loaded into the Chroma DB. Ask the RAG questions about these two board games and see how well it does answering your questions. The RAG can be invoked using the following command with the sample question:
 
@@ -68,6 +67,14 @@ Here are some additional questions you can try:
 - How many points does the longest continuous train get in Ticket to Ride? (Answer with the number only)
 
 You can also browse the instruction manuals that are in the `./data_boardgames` folder to come up with your own questions.
+
+## Running the FASTAPI server to expose the RAG via API
+
+Start the FASTPI server to expose api's that can be called from the ai_rag_ui or curl.
+
+```
+python query_data.py  How do I build a hotel in monopoly?
+```
 
 ## Running the test cases
 

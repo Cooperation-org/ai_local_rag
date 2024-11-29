@@ -6,11 +6,11 @@ from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
 
-from get_embedding_function import get_embedding_function
+from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_pdf
 
 # Load Config Settings
 load_dotenv()  # take environment variables from .env.
-CHROMA_PATH = chroma_path = os.getenv("CHROMA_PATH")
+chroma_db_path_pdf = os.getenv("CHROMA_DB_PATH_PDF")
 
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
@@ -34,8 +34,8 @@ def main():
 
 def query_rag(query_text: str):
     # Prepare the DB.
-    embedding_function = get_embedding_function()
-    db = Chroma(persist_directory=CHROMA_PATH,
+    embedding_function = get_embedding_function_for_pdf()
+    db = Chroma(persist_directory=chroma_db_path_pdf,
                 embedding_function=embedding_function)
 
     # Search the DB.

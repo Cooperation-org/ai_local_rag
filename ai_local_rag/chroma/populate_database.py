@@ -1,16 +1,16 @@
 import argparse
 import os
-from dotenv import load_dotenv
-
-
 import shutil
+
+from dotenv import load_dotenv
+from langchain.schema.document import Document
 # from langchain.document_loaders.pdf import PyPDFDirectoryLoader
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.schema.document import Document
-from get_embedding_function import get_embedding_function
 # from langchain.vectorstores.chroma import Chroma
 from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from ai_local_rag.utils.get_embedding_function import get_embedding_function_for_pdf
 
 # Load Config Settings
 load_dotenv()  # take environment variables from .env.
@@ -56,10 +56,10 @@ def _split_documents(documents: list[Document]):
 
 
 def _add_to_chroma(chunks: list[Document]):
-    chroma_path = os.getenv("CHROMA_PATH")
+    chroma_db_path_pdf = os.getenv("CHROMA_DB_PATH_PDF")
     # Load the existing database.
     db = Chroma(
-        persist_directory=chroma_path, embedding_function=get_embedding_function()
+        persist_directory=chroma_db_path_pdf, embedding_function=get_embedding_function_for_pdf()
     )
 
     # Calculate Page IDs.
@@ -119,10 +119,10 @@ def clear_database():
     Remove the database so that we can rebuild it
     """
     load_dotenv()  # take environment variables from .env.
-    chroma_path = os.getenv("CHROMA_PATH")
+    chroma_db_path = os.getenv("CHROMA_DB_PATH_PDF")
 
-    if os.path.exists(chroma_path):
-        shutil.rmtree(chroma_path)
+    if os.path.exists(chroma_db_path):
+        shutil.rmtree(chroma_db_path)
 
 
 if __name__ == "__main__":

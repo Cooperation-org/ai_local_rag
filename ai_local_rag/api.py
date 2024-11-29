@@ -1,11 +1,13 @@
 import logging
-from query_data import query_rag
-from fastapi import FastAPI, Request, HTTPException, status
+
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from models.rag_query_model import QueryInput, QueryOutput
-from utils.async_utils import async_retry
+
+from ai_local_rag.models.rag_query_model import QueryInput, QueryOutput
+from ai_local_rag.query_data import query_rag
+from ai_local_rag.utils.async_utils import async_retry
 
 
 class Message(BaseModel):
@@ -22,6 +24,10 @@ app = FastAPI(
 
 channel_list = ["general", "dev", "marketing"]
 message_map = {}
+
+logging.basicConfig()
+logger = logging.getLogger("api")
+logger.setLevel(logging.DEBUG)
 
 
 @app.exception_handler(RequestValidationError)
@@ -60,20 +66,21 @@ def post_message(message: Message):
 
 @app.post("/rag-query")
 async def query_rag_api(query: QueryInput):
-    print(f"api.py - API Request Data: {query}")
+    logger.info(f"api.py - API Request Data: {query}")
     query_response = query_rag({"input": query})
-    print(query_response)
+    logger.debug(f"Query Response: - {query_response}")
 
     # query: str
     # response: str
     # sources: list[str]
     query_response2 = {
         "query": query, "response": query_response["response"], "sources": query_response["sources"]}
-    print(f"Query Response2:  {query_response2}")
+    logger.info(f"Query Response2:  {query_response2}")
 
     # query_response["intermediate_steps"] = [
     #    str(s) for s in query_response["intermediate_steps"]
     # ]
+    logger.debug(f"Query Response: - {query_response2}")
 
     return query_response2
 
@@ -83,7 +90,7 @@ async def query_rag_api2(
     query: QueryInput,
 ) -> QueryOutput:
     query_response = query_rag({"input": query})
-    print(query_response)
+    logger.debug(f"Query Response: {query_response}")
 
     # query: str
     # response: str
@@ -91,7 +98,7 @@ async def query_rag_api2(
     query_text = query["query"]
     query_response2 = {
         "query": query_text, "response": query_response["response"], "sources": query_response["sources"]}
-    print(f"Query Response2:  {query_response2}")
+    logger.debug(f"Query Response2:  {query_response2}")
 
     # query_response["intermediate_steps"] = [
     #    str(s) for s in query_response["intermediate_steps"]
